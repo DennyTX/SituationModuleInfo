@@ -24,12 +24,9 @@ namespace SituationModuleInfo
         public string[] ExperimentTitles { get; set; }
     }
 
-    // указываем что аддон активируется 1 раз при входе в любой едитор (VAB, SPH)
     [KSPAddon(KSPAddon.Startup.EditorAny, true)]
     public class SituationModule : KspBehavior
     {
-        private const string DEFAULT_EXPERIMENT_CONT_TITLE = "Science Experiment";
-        // создаем эталлонный список ситуаций, который будем менять 
         private readonly string[] _etalonSituationMask = new string[6]  
         {
             "Flying High: <b><color=red>X</color></b>",
@@ -41,13 +38,10 @@ namespace SituationModuleInfo
         };
 
         private string usageMaskInt = "";
-
-        // создаем тип лист для списка партов
+        private ConfigNode _config; 
         private List<AvailablePart> _partsWithScience = new List<AvailablePart>();
-
-        private ConfigNode _config;
-
         private List<Item> _items = new List<Item>();
+        private List<string> _allExperimentTitles = new List<string>();
 
         protected override void Start()
         {
@@ -55,47 +49,39 @@ namespace SituationModuleInfo
             var directoryPath = Path.GetDirectoryName(assemblyPath);
             _config = ConfigNode.Load(Path.Combine(directoryPath, "config.cfg"));
             LoadConfig();
-            // переопределяем стандартный метод запускающийся при старте (добавляем свой действия)
             SituationMaskAnalys();
         }
 
-        private void LoadConfig()  // загружаем ноду из конфига
+        private void LoadConfig()  
         {
             var nodes = _config.GetNodes("ITEM");
             foreach (var node in nodes)
             {
-                var item = new Item();
-                item.ModuleName = node.GetValue("moduleName");
-                item.Biome = node.GetValue("biome");
-                item.Situation = node.GetValue("situation");
-                var experimentTitles = node.GetValue("experimentTitles");
-                //Debug.LogWarning(experimentTitles);
-                item.ExperimentTitles = experimentTitles.Split(',').Select(x => x.Trim()).ToArray();
-                foreach (var data in item.ExperimentTitles)
+                var item = new Item
                 {
-                    //Debug.LogWarning(data);
-                }
+                    ModuleName = node.GetValue("moduleName"),
+                    Biome = node.GetValue("biome"),
+                    Situation = node.GetValue("situation")
+                };
+                var experimentTitles = node.GetValue("experimentTitles");
+                Debug.LogWarning(experimentTitles);
+                item.ExperimentTitles = experimentTitles.Split(',').Select(x => x.Trim().ToLower()).ToArray();
                 _items.Add(item);
+                _allExperimentTitles.AddRange(item.ExperimentTitles);
             }
         }
 
         private void SituationMaskAnalys()
         {
-            //получаем в ранее созданный объект типа список перечень партов, имеющих ModuleScienceExperiment или модуль с этим родителем 
             _partsWithScience = PartLoader.LoadedPartsList.Where(p => p.partPrefab.Modules.GetModules<ModuleScienceExperiment>().Any()).ToList();
-            //цикл. перебираем все элементы в полученном ранее списке
 
             foreach (var part in _partsWithScience)
             {
-                // получаем в список все нужные модули (ModuleScienceExperiment и детки) в рамках парта
                 var modules = part.partPrefab.Modules.GetModules<ModuleScienceExperiment>();
 
-                //цикл. перебираем полученные модули. этот цикл имеет смысл если модулей больше одного 
                 foreach (var moduleScienceExperiment in modules)
                 {
-                    //получаем каждый эксперимент
                     ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment(moduleScienceExperiment.experimentID) ?? new ScienceExperiment();
-
                     var moduleNode = _items.FirstOrDefault(x => x.ModuleName.Equals(moduleScienceExperiment.name, StringComparison.InvariantCultureIgnoreCase));
                     if (moduleNode != null)
                     {
@@ -133,15 +119,6 @@ namespace SituationModuleInfo
                         }
                     }
 
-                    // для DMagic
-                    //            var testModule = moduleScienceExperiment as DMModuleScienceAnimate; //безопасное приведение типов, идем от парента к наследникам
-                    //            if (testModule != null)
-                    //            {
-                    //                experiment.biomeMask = (uint)testModule.bioMask;
-                    //                experiment.situationMask = (uint)testModule.sitMask;
-                    //            }
-
-                    //создаем новую строку которую потом будем ложить в блок инфы в ЮИ парта в ВАБ
                     var itemInfo = new string[6];
                     Array.Copy(_etalonSituationMask, itemInfo, 6);
 
@@ -238,37 +215,20 @@ namespace SituationModuleInfo
                             usageMaskInt = "<i><color=purple>Experiment can only be used if crew is scientist.</color></i>";
                             break;
                     }
-                    // ищем в форматировании инфы парта в ВАБ блок который нам нужен
+
                     try
                     {
-                        // получаем имеющийся блок с нужным заголовком (Science Experiment)
-
-                        //moduleNode = moduleNode ?? new Item();
-
-                        var infos = part.moduleInfos.Where(
-                            x =>
-                                x.moduleName.Equals("Science Experiment", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMModule Science Animate", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMAnomaly Scanner", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMBio Drill", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMRover Goo Mat", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMSoil Moisture", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMSolar Collector", StringComparison.InvariantCultureIgnoreCase)
-                                    || x.moduleName.Equals("DMXRay Diffract", StringComparison.InvariantCultureIgnoreCase)
-                                    ).ToList();
-                                    //|| x.moduleName.Equals(_items.ExperimentTitles, StringComparison.InvariantCultureIgnoreCase)
-                                    //).ToList();
-                        //var infos = part.moduleInfos.Where(x => x.moduleName.Equals(DEFAULT_EXPERIMENT_CONT_TITLE, StringComparison.InvariantCultureIgnoreCase) 
-                        //    || moduleNode.ExperimentTitles.Any(m => m.Equals(x.moduleName, StringComparison.InvariantCultureIgnoreCase))).ToList();
-                        
+                        List<AvailablePart.ModuleInfo> infos = new List<AvailablePart.ModuleInfo>();
+                        foreach (var data in part.moduleInfos)
+                        {
+                            if (_allExperimentTitles.Contains(data.moduleName.ToLower()))
+                            {
+                                infos.Add(data);
+                            }
+                        }
                         if (!infos.Any()) continue;
-                        // получаем имеющуюся в блоке инфу
-                        // if(condition) { do } else {do2} => condition ? true : false
                         var d = infos.FirstOrDefault(x => x.info.Contains(string.IsNullOrEmpty(moduleScienceExperiment.experimentActionName) ? moduleScienceExperiment.experimentID : moduleScienceExperiment.experimentActionName));
-                        // для сложного типа и строки значение по умолчанию null
-                        // если ничего нет - следующая итерация цикла
                         if (d == null) continue;
-                        // склеиваем  и передаем  сформированную строку в метод подстановки
                         d.info = string.Concat(d.info, "\n", GetInfo(itemInfo, usageMaskInt));
                     }
                     catch (Exception ex)
@@ -282,8 +242,6 @@ namespace SituationModuleInfo
         private string GetInfo(string[] moduleInfos, string usageMaskInt)
         {
             string data = "--------------------------------\n";
-            //data = string.Concat(data, $"<b><color={XKCDColors.HexFormat.Cyan}>{moduleInfos[0]}</color></b>\n\n");
-            //цикл.  подставляем готовые строки заканчивая каждую переводом строки
             foreach (string moduleInfo in moduleInfos)
             {
                 data = string.Concat(data, moduleInfo + "\n");
