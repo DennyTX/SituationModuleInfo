@@ -1,0 +1,219 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using KspHelper.Behavior;
+using UnityEngine;
+
+namespace SituationModuleInfo
+{
+    // указываем что аддон активируется 1 раз при входе в любой едитор (VAB, SPH)
+    [KSPAddon(KSPAddon.Startup.EditorAny, true)] 
+    public class SituationModule : KspBehavior
+    {
+        // создаем эталлонный список ситуаций, который будем менять 
+        private readonly string[] _etalonSituationMask = new string[6]  
+        {
+            "Flying High: <b><color=red>X</color></b>",
+            "Flying Low: <b><color=red>X</color></b>",
+            "In Space High: <b><color=red>X</color></b>",
+            "In Space Low: <b><color=red>X</color></b>",
+            "Landed: <b><color=red>X</color></b>",
+            "Splashed: <b><color=red>X</color></b>"
+        };
+
+        private string usageMaskInt = "";  
+
+        // создаем тип лист для списка партов
+        private List<AvailablePart> _partsWithScience = new List<AvailablePart>(); 
+
+        protected override void Start()
+        {
+            // переопределяем стандартный метод запускающийся при старте (добавляем свой действия)
+            SituationMaskAnalys(); 
+        }
+
+        private void SituationMaskAnalys()
+        {
+            //получаем в ранее созданный объект типа список перечень партов, имеющих ModuleScienceExperiment или модуль с этим родителем 
+            _partsWithScience = PartLoader.LoadedPartsList.Where(p => p.partPrefab.Modules.GetModules<ModuleScienceExperiment>().Any()).ToList(); 
+            //_parts = PartLoader.LoadedPartsList.Where(p => p.partPrefab.Modules.Contains("ModuleScienceExperiment")).ToList(); //только парты с указанным модулем
+
+            //цикл. перебираем все элементы в полученном ранее списке
+            foreach (var part in _partsWithScience)  
+            {
+                Debug.Log("====================================== _partsWithScience.Count() ======== " + _partsWithScience.Count());
+                //Debug.Log("====================================== foreach _partsWithScience == " + part.name);
+                // получаем в список все нужные модули (ModuleScienceExperiment и детки) в рамках парта
+                var modules = part.partPrefab.Modules.GetModules<ModuleScienceExperiment>();
+
+                //цикл. перебираем полученные модули. этот цикл имеет смысл если модулей больше одного 
+                foreach (var moduleScienceExperiment in modules) 
+                {
+                    //получаем каждый эксперимент
+                    ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment(moduleScienceExperiment.experimentID);
+                    //Debug.Log("====================================== modules==================== " + modules.Count());
+                    //Debug.Log("====================================== foreach modules =========== " + moduleScienceExperiment.experimentActionName); 
+                    //Debug.Log("====================================== experiment ================ " + experiment.experimentTitle);
+                    //создаем новую строку которую потом будем ложить в блок инфы в ЮИ парта в ВАБ
+                    var itemInfo = new string[6];
+
+                    // копируем эталонную запись и начинаем ее менять. Разборка битовыми операциями (поиск соответствия)
+                    Array.Copy(_etalonSituationMask, itemInfo, 6);
+
+                    if ((experiment.situationMask & (uint)ExperimentSituations.FlyingHigh) ==
+                        (uint)ExperimentSituations.FlyingHigh)
+                    {
+                        itemInfo[0] = "Flying High: <b><color=green>V</color></b>";
+                    }
+
+                    if ((experiment.biomeMask & (uint)ExperimentSituations.FlyingHigh) ==
+                    (uint)ExperimentSituations.FlyingHigh)
+                    {
+                        itemInfo[0] = "Flying High: <b><color=green>V</color> Biome Depending</b>";
+                    }
+
+                    if ((experiment.situationMask & (uint)ExperimentSituations.FlyingLow) ==
+                        (uint)ExperimentSituations.FlyingLow)
+                    {
+                        itemInfo[1] = "Flying Low: <b><color=green>V</color></b>";
+                    }
+
+                    if ((experiment.biomeMask & (uint)ExperimentSituations.FlyingLow) ==
+                    (uint)ExperimentSituations.FlyingLow)
+                    {
+                        itemInfo[1] = "Flying Low: <b><color=green>V</color> Biome Depending</b>";
+                    }
+
+                    if ((experiment.situationMask & (uint)ExperimentSituations.InSpaceHigh) ==
+                        (uint)ExperimentSituations.InSpaceHigh)
+                    {
+                        itemInfo[2] = "Space High: <b><color=green>V</color></b>";
+                    }
+
+                    if ((experiment.biomeMask & (uint)ExperimentSituations.InSpaceHigh) ==
+                    (uint)ExperimentSituations.InSpaceHigh)
+                    {
+                        itemInfo[2] = "Space High: <b><color=green>V</color> Biome Depending</b>";
+                    }
+
+                    if ((experiment.situationMask & (uint)ExperimentSituations.InSpaceLow) ==
+                        (uint)ExperimentSituations.InSpaceLow)
+                    {
+                        itemInfo[3] = "Space Low: <b><color=green>V</color></b>";
+                    }
+
+                    if ((experiment.biomeMask & (uint)ExperimentSituations.InSpaceLow) ==
+                    (uint)ExperimentSituations.InSpaceLow)
+                    {
+                        itemInfo[3] = "Space Low: <b><color=green>V</color> Biome Depending</b>";
+                    }
+
+                    if ((experiment.situationMask & (uint)ExperimentSituations.SrfLanded) ==
+                        (uint)ExperimentSituations.SrfLanded)
+                    {
+                        itemInfo[4] = "Landed: <b><color=green>V</color></b>";
+                    }
+
+                    if ((experiment.biomeMask & (uint)ExperimentSituations.SrfLanded) ==
+                    (uint)ExperimentSituations.SrfLanded)
+                    {
+                        itemInfo[4] = "Landed: <b><color=green>V</color> Biome Depending</b>";
+                    }
+
+                    if ((experiment.situationMask & (uint)ExperimentSituations.SrfSplashed) ==
+                        (uint)ExperimentSituations.SrfSplashed)
+                    {
+                        itemInfo[5] = "Splashed: <b><color=green>V</color></b>";
+                    }
+
+                    if ((experiment.biomeMask & (uint)ExperimentSituations.SrfSplashed) ==
+                    (uint)ExperimentSituations.SrfSplashed)
+                    {
+                        itemInfo[5] = "Splashed: <b><color=green>V</color> Biome Depending</b>";
+                    }
+
+                    //Debug.Log("=============================" + moduleScienceExperiment.usageReqMaskInternal);
+                    switch (moduleScienceExperiment.usageReqMaskInternal)
+                    {
+                        case -1:
+                            usageMaskInt = "<i><color=red>Experiment can't be used at all.</color></i>";
+                            break;
+                        case 0:
+                            usageMaskInt = "<i><color=maroon>Experiment can always be used.</color></i>";
+                            break;
+                        case 1:
+                            usageMaskInt = "<i><color=green>Experiment can be used if vessel is under control.</color></i>";
+                            break;
+                        case 2:
+                            usageMaskInt = "<i><color=navy>Experiment can only be used if vessel is crewed.</color></i>";
+                            break;
+                        case 4:
+                            usageMaskInt = "<i><color=teal>Experiment can only be used if part contains crew.</color></i>";
+                            break;
+                        case 8:
+                            usageMaskInt = "<i><color=purple>Experiment can only be used if crew is scientist.</color></i>";
+                            break;
+                    }
+                    // ищем в форматировании инфы парта в ВАБ блок который нам нужен
+                    try
+                    {
+                        // получаем имеющийся блок с нужным заголовком (Science Experiment)
+                        Debug.Log("=======================" + part.name);
+                        var infos = part.moduleInfos.Where(
+                            x =>
+                                x.moduleName.Equals("Science Experiment",
+                                    StringComparison.InvariantCultureIgnoreCase)).ToList();
+                        //var infosDM = part.moduleInfos.Where(
+                        //    x =>
+                        //        x.moduleName.Equals("DMModule Science Animate",
+                        //            StringComparison.InvariantCultureIgnoreCase)).ToList();
+                        // если ничего нет - следующая итерация цикла
+                        if (!infos.Any()) continue; 
+                        //if (!infosAA.Any() & !infosDM.Any()) continue;
+                        //if (infosAA == null)
+                        //{
+                        //    var infos = infosAA;
+                        //} 
+                        //else
+                        //{
+                        //    var infos = infosDM;
+                        //}
+  
+                        // ????? получаем имеющуюся в блоке инфу
+                        var d = infos.FirstOrDefault(x => x.info.Contains(string.IsNullOrEmpty(moduleScienceExperiment.experimentActionName) ? moduleScienceExperiment.experimentID : moduleScienceExperiment.experimentActionName));
+
+                        // если ничего нет - следующая итерация цикла
+                        if (d == null) continue;
+                        //Debug.Log("=============================================== "+ d);
+                        //Debug.Log("=============================================== GO ====================================");
+                        //склеиваем ???? и передаем  сформированную строку в метод подстановки
+                        d.info = string.Concat(d.info, "\n", GetInfo(itemInfo, usageMaskInt));
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
+                    //Debug.Log("=============================================== NEXT =======================================");
+                }
+                //Debug.Log("=============================================== foreach modules end ============================");
+            }
+            //Debug.Log("=============================================== foreach _partsWithScience end ============================");
+        }
+
+        //метод вызывается после формирования готового массива строк для подстановки
+        private string GetInfo(string[] moduleInfos, string usageMaskInt)
+        {
+            //Debug.Log("=============================================== moduleInfos ================================================================");
+            //начинаем с перевода строки
+            string data = "--------------------------------\n";
+            //data = string.Concat(data, $"<b><color={XKCDColors.HexFormat.Cyan}>{moduleInfos[0]}</color></b>\n\n");
+            //цикл.  подставляем готовые строки заканчивая каждую переводом строки
+            foreach (string moduleInfo in moduleInfos)
+            {
+                data = string.Concat(data, moduleInfo + "\n");
+            }
+            data = string.Concat(data, "\n" + usageMaskInt.ToUpper() + "\n");
+            return data;
+        }
+    }
+}

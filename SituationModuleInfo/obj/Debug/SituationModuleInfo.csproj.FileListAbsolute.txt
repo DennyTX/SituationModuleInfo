@@ -1,0 +1,11 @@
+E:\KSP_Dev_104\GameData\SituationInfo\SituationModuleInfo.dll
+E:\KSP_Dev_104\GameData\SituationInfo\SituationModuleInfo.pdb
+d:\documents\visual studio 2015\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationModuleInfo.dll
+d:\documents\visual studio 2015\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationModuleInfo.pdb
+C:\KSP_104_test\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.dll
+C:\KSP_104_test\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.pdb
+E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationMaskInfo.dll
+E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationMaskInfo.pdb
+C:\KSP_104\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.dll
+C:\KSP_104\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.pdb
+C:\KSP_104\GameData\OLDD\SituationMaskInfo\config.cfg
