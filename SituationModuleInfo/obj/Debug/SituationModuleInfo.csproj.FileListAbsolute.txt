@@ -9,4 +9,3 @@ E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationMo
 C:\KSP_104\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.dll
 C:\KSP_104\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.pdb
 C:\KSP_104\GameData\OLDD\SituationMaskInfo\config.cfg
-E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationModuleInfo.csprojResolveAssemblyReference.cache

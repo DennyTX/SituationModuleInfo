@@ -6,42 +6,28 @@ using UnityEngine;
 using System.Reflection;
 using System.IO;
 
-
 namespace SituationModuleInfo
 {
     class Item
     {
-        public Item()
-        {
-            ExperimentTitles = new string[1] { string.Empty };
-        }
         public string ModuleName { get; set; }
 
         public string Biome { get; set; }
 
         public string Situation { get; set; }
 
-        public string[] ExperimentTitles { get; set; }
+        public string ExperimentTitle { get; set; }
     }
 
-    [KSPAddon(KSPAddon.Startup.EditorAny, true)]
+ [KSPAddon(KSPAddon.Startup.EditorAny, false)]
     public class SituationModule : KspBehavior
     {
-        private readonly string[] _etalonSituationMask = new string[6]  
-        {
-            "Flying High: <b><color=red>X</color></b>",
-            "Flying Low: <b><color=red>X</color></b>",
-            "In Space High: <b><color=red>X</color></b>",
-            "In Space Low: <b><color=red>X</color></b>",
-            "Landed: <b><color=red>X</color></b>",
-            "Splashed: <b><color=red>X</color></b>"
-        };
-
-        private string usageMaskInt = "";
-        private ConfigNode _config; 
+        private string _biomeDepending = "Biome Depending";
+        private string _usageMaskInt = "";
+        private ConfigNode _config;
         private List<AvailablePart> _partsWithScience = new List<AvailablePart>();
-        private List<Item> _items = new List<Item>();
-        private List<string> _allExperimentTitles = new List<string>();
+        private readonly List<Item> _items = new List<Item>();
+        private ApplicationLauncherButton _button;
 
         protected override void Start()
         {
@@ -49,25 +35,58 @@ namespace SituationModuleInfo
             var directoryPath = Path.GetDirectoryName(assemblyPath);
             _config = ConfigNode.Load(Path.Combine(directoryPath, "config.cfg"));
             LoadConfig();
-            SituationMaskAnalys();
+
+            if (_button == null)
+            {
+                var texture = GameDatabase.Instance.GetTexture("OLDD/SituationMaskInfo/ScienceInfoOFF", false);
+                _button = ApplicationLauncher.Instance.AddModApplication(ButtonTrue, ButtonFalse, () => { }, () => { },
+                    () => { }, () => { }, ApplicationLauncher.AppScenes.VAB | ApplicationLauncher.AppScenes.SPH, texture);
+            }
         }
 
-        private void LoadConfig()  
+        private void ButtonTrue()
+        {
+            SituationMaskAnalys();
+            _button.SetTexture(GameDatabase.Instance.GetTexture("OLDD/SituationMaskInfo/ScienceInfoON", false));
+        }
+
+        private void ButtonFalse()
+        {
+            RemoveModuleAdditionalInfo();
+            _button.SetTexture(GameDatabase.Instance.GetTexture("OLDD/SituationMaskInfo/ScienceInfoOFF", false));
+        }
+
+        private void RemoveModuleAdditionalInfo()
+        {
+            _partsWithScience = PartLoader.LoadedPartsList.Where(p => p.partPrefab.Modules.GetModules<ModuleScienceExperiment>().Any()).ToList();
+
+            foreach (var part in _partsWithScience)
+            {
+                var moduleInfos = part.partPrefab.partInfo.moduleInfos;
+                foreach (var moduleInfo in moduleInfos)
+                {
+                    var startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
+                    if (startIndex < 0) continue;
+
+                    moduleInfo.info = moduleInfo.info.Remove(startIndex - 1);
+                }
+            }
+        }
+
+        private void LoadConfig()
         {
             var nodes = _config.GetNodes("ITEM");
             foreach (var node in nodes)
             {
+                //var experimentTitle = node.GetValue("experimentTitle"); 
                 var item = new Item
                 {
                     ModuleName = node.GetValue("moduleName"),
-                    Biome = node.GetValue("biome"),
-                    Situation = node.GetValue("situation")
+                    Biome = node.GetValue("biome") ?? string.Empty,
+                    Situation = node.GetValue("situation") ?? string.Empty,
+                    ExperimentTitle = node.GetValue("experimentTitle").ToLower()               
                 };
-                var experimentTitles = node.GetValue("experimentTitles");
-                Debug.LogWarning(experimentTitles);
-                item.ExperimentTitles = experimentTitles.Split(',').Select(x => x.Trim().ToLower()).ToArray();
                 _items.Add(item);
-                _allExperimentTitles.AddRange(item.ExperimentTitles);
             }
         }
 
@@ -79,164 +98,171 @@ namespace SituationModuleInfo
             {
                 var modules = part.partPrefab.Modules.GetModules<ModuleScienceExperiment>();
 
-                foreach (var moduleScienceExperiment in modules)
+                foreach (ModuleScienceExperiment moduleScienceExperiment in modules)
                 {
                     ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment(moduleScienceExperiment.experimentID) ?? new ScienceExperiment();
-                    var moduleNode = _items.FirstOrDefault(x => x.ModuleName.Equals(moduleScienceExperiment.name, StringComparison.InvariantCultureIgnoreCase));
-                    if (moduleNode != null)
-                    {
-                        Type t = moduleScienceExperiment.GetType();
-                        var field = t.GetField(moduleNode.Biome);
-                        if (field != null)
-                        {
-                            var value = field.GetValue(moduleScienceExperiment);
-                            experiment.biomeMask = (uint)value;
-                        }
-                        else
-                        {
-                            var property = t.GetProperty(moduleNode.Biome);
-                            if (property != null)
-                            {
-                                var value = property.GetValue(moduleScienceExperiment, null);
-                                experiment.biomeMask = (uint)value;
-                            }
-                        }
 
-                        field = t.GetField(moduleNode.Situation);
-                        if (field != null)
-                        {
-                            var value = field.GetValue(moduleScienceExperiment);
-                            experiment.situationMask = (uint)value;
-                        }
-                        else
-                        {
-                            var property = t.GetProperty(moduleNode.Situation);
-                            if (property != null)
-                            {
-                                var value = property.GetValue(moduleScienceExperiment, null);
-                                experiment.situationMask = (uint)value;
-                            }
-                        }
-                    }
+                    var moduleNode = _items.FirstOrDefault(x => x.ModuleName.Equals(moduleScienceExperiment.moduleName, StringComparison.InvariantCultureIgnoreCase));
+
+                    PrepareExternalModules(moduleNode, moduleScienceExperiment, experiment);
 
                     var itemInfo = new string[6];
-                    Array.Copy(_etalonSituationMask, itemInfo, 6);
 
-                    if ((experiment.situationMask & (uint)ExperimentSituations.FlyingHigh) ==
-                        (uint)ExperimentSituations.FlyingHigh)
-                    {
-                        itemInfo[0] = "Flying High: <b><color=green>V</color></b>";
-                    }
+                    PrepareSituationAndBiomes(experiment, itemInfo);
 
-                    if ((experiment.biomeMask & (uint)ExperimentSituations.FlyingHigh) ==
-                    (uint)ExperimentSituations.FlyingHigh)
-                    {
-                        itemInfo[0] = "Flying High: <b><color=green>V</color> Biome Depending</b>";
-                    }
+                    PrepareUsage(moduleScienceExperiment);
 
-                    if ((experiment.situationMask & (uint)ExperimentSituations.FlyingLow) ==
-                        (uint)ExperimentSituations.FlyingLow)
-                    {
-                        itemInfo[1] = "Flying Low: <b><color=green>V</color></b>";
-                    }
+                    PrepareInfoDescription(part, moduleScienceExperiment, itemInfo);
+                }
+            }
+        }
 
-                    if ((experiment.biomeMask & (uint)ExperimentSituations.FlyingLow) ==
-                    (uint)ExperimentSituations.FlyingLow)
-                    {
-                        itemInfo[1] = "Flying Low: <b><color=green>V</color> Biome Depending</b>";
-                    }
+        private static void PrepareExternalModules(Item moduleNode, ModuleScienceExperiment moduleScienceExperiment,
+            ScienceExperiment experiment)
+        {
+            if (moduleNode != null)
+            {
+                Type t = moduleScienceExperiment.GetType();
+                //var meth = t.GetMethod("");
 
-                    if ((experiment.situationMask & (uint)ExperimentSituations.InSpaceHigh) ==
-                        (uint)ExperimentSituations.InSpaceHigh)
+                //meth.Invoke(moduleScienceExperiment, new object[]{12, 2, 6});
+                var field = t.GetField(moduleNode.Biome);
+                if (field != null)
+                {
+                    var value = field.GetValue(moduleScienceExperiment);
+                    experiment.biomeMask = Convert.ToUInt32(value);
+                }
+                else
+                {
+                    var property = t.GetProperty(moduleNode.Biome);
+                    if (property != null)
                     {
-                        itemInfo[2] = "Space High: <b><color=green>V</color></b>";
+                        var value = property.GetValue(moduleScienceExperiment, null);
+                        experiment.biomeMask = Convert.ToUInt32(value);
                     }
+                }
 
-                    if ((experiment.biomeMask & (uint)ExperimentSituations.InSpaceHigh) ==
-                    (uint)ExperimentSituations.InSpaceHigh)
+                field = t.GetField(moduleNode.Situation);
+                if (field != null)
+                {
+                    var value = field.GetValue(moduleScienceExperiment);
+                    experiment.situationMask = Convert.ToUInt32(value);
+                }
+                else
+                {
+                    var property = t.GetProperty(moduleNode.Situation);
+                    if (property != null)
                     {
-                        itemInfo[2] = "Space High: <b><color=green>V</color> Biome Depending</b>";
-                    }
-
-                    if ((experiment.situationMask & (uint)ExperimentSituations.InSpaceLow) ==
-                        (uint)ExperimentSituations.InSpaceLow)
-                    {
-                        itemInfo[3] = "Space Low: <b><color=green>V</color></b>";
-                    }
-
-                    if ((experiment.biomeMask & (uint)ExperimentSituations.InSpaceLow) ==
-                    (uint)ExperimentSituations.InSpaceLow)
-                    {
-                        itemInfo[3] = "Space Low: <b><color=green>V</color> Biome Depending</b>";
-                    }
-
-                    if ((experiment.situationMask & (uint)ExperimentSituations.SrfLanded) ==
-                        (uint)ExperimentSituations.SrfLanded)
-                    {
-                        itemInfo[4] = "Landed: <b><color=green>V</color></b>";
-                    }
-
-                    if ((experiment.biomeMask & (uint)ExperimentSituations.SrfLanded) ==
-                    (uint)ExperimentSituations.SrfLanded)
-                    {
-                        itemInfo[4] = "Landed: <b><color=green>V</color> Biome Depending</b>";
-                    }
-
-                    if ((experiment.situationMask & (uint)ExperimentSituations.SrfSplashed) ==
-                        (uint)ExperimentSituations.SrfSplashed)
-                    {
-                        itemInfo[5] = "Splashed: <b><color=green>V</color></b>";
-                    }
-
-                    if ((experiment.biomeMask & (uint)ExperimentSituations.SrfSplashed) ==
-                    (uint)ExperimentSituations.SrfSplashed)
-                    {
-                        itemInfo[5] = "Splashed: <b><color=green>V</color> Biome Depending</b>";
-                    }
-
-                    switch (moduleScienceExperiment.usageReqMaskInternal)
-                    {
-                        case -1:
-                            usageMaskInt = "<i><color=red>Experiment can't be used at all.</color></i>";
-                            break;
-                        case 0:
-                            usageMaskInt = "<i><color=maroon>Experiment can always be used.</color></i>";
-                            break;
-                        case 1:
-                            usageMaskInt = "<i><color=green>Experiment can be used if vessel is under control.</color></i>";
-                            break;
-                        case 2:
-                            usageMaskInt = "<i><color=navy>Experiment can only be used if vessel is crewed.</color></i>";
-                            break;
-                        case 4:
-                            usageMaskInt = "<i><color=teal>Experiment can only be used if part contains crew.</color></i>";
-                            break;
-                        case 8:
-                            usageMaskInt = "<i><color=purple>Experiment can only be used if crew is scientist.</color></i>";
-                            break;
-                    }
-
-                    try
-                    {
-                        List<AvailablePart.ModuleInfo> infos = new List<AvailablePart.ModuleInfo>();
-                        foreach (var data in part.moduleInfos)
-                        {
-                            if (_allExperimentTitles.Contains(data.moduleName.ToLower()))
-                            {
-                                infos.Add(data);
-                            }
-                        }
-                        if (!infos.Any()) continue;
-                        var d = infos.FirstOrDefault(x => x.info.Contains(string.IsNullOrEmpty(moduleScienceExperiment.experimentActionName) ? moduleScienceExperiment.experimentID : moduleScienceExperiment.experimentActionName));
-                        if (d == null) continue;
-                        d.info = string.Concat(d.info, "\n", GetInfo(itemInfo, usageMaskInt));
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogException(ex);
+                        var value = property.GetValue(moduleScienceExperiment, null);
+                        experiment.situationMask = Convert.ToUInt32(value);
                     }
                 }
             }
+        }
+
+        private void PrepareInfoDescription(AvailablePart part, ModuleScienceExperiment moduleScienceExperiment,
+            string[] itemInfo)
+        {
+            try
+            {
+                foreach (var item in _items)
+                {
+                    var infos = part.moduleInfos.Where(
+                        x => item.ExperimentTitle.Contains(x.moduleName.ToLower()));
+
+                    if (!infos.Any()) continue;
+                    var d =
+                        infos.FirstOrDefault(
+                            x =>
+                                x.info.Contains(
+                                    string.IsNullOrEmpty(moduleScienceExperiment.experimentActionName)
+                                        ? moduleScienceExperiment.experimentID
+                                        : moduleScienceExperiment.experimentActionName));
+                    if (d == null) continue;
+                    d.info = string.Concat(d.info, "\n", GetInfo(itemInfo, _usageMaskInt));
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+
+        private void PrepareSituationAndBiomes(ScienceExperiment experiment, string[] itemInfo)
+        {
+            var arr = Enum.GetValues(typeof (ExperimentSituations));
+            var arrIndexed = new List<ExperimentSituations>(); 
+
+            foreach (var type in arr)
+            {
+                arrIndexed.Add((ExperimentSituations)type);  // пробежимся по всем элементам, возьмем его и преобразуем в объект ExperimentSituations
+            }
+            for (int i = 0; i < 6; i++)
+            {
+                var enumMember = FormatString(arrIndexed, i);
+                if ((experiment.situationMask & (uint) (arrIndexed[i])) == (uint) (arrIndexed[i]))
+                {
+                    itemInfo[i] = string.Concat(enumMember, "<b><color=green>V</color></b>");
+                    if ((experiment.biomeMask & (uint) (arrIndexed[i])) == (uint) (arrIndexed[i]))
+                    {
+                        itemInfo[i] = string.Concat(itemInfo[i], "  ", _biomeDepending);
+                    }
+                }
+                else
+                {
+                    itemInfo[i] = string.Concat(enumMember, "<b><color=red>X</color></b>");
+                }
+            }
+        }
+
+        private void PrepareUsage(ModuleScienceExperiment moduleScienceExperiment)
+        {
+            switch (moduleScienceExperiment.usageReqMaskInternal)
+            {
+                case -1:
+                    _usageMaskInt = "<i><color=red>Experiment can't be used at all.</color></i>";
+                    break;
+                case 0:
+                    _usageMaskInt = "<i><color=maroon>Experiment can always be used.</color></i>";
+                    break;
+                case 1:
+                    _usageMaskInt = "<i><color=green>Experiment can be used if vessel is under control.</color></i>";
+                    break;
+                case 2:
+                    _usageMaskInt = "<i><color=lime>Experiment can only be used if vessel is crewed.</color></i>";
+                    break;
+                case 4:
+                    _usageMaskInt = "<i><color=teal>Experiment can only be used if part contains crew.</color></i>";
+                    break;
+                case 8:
+                    _usageMaskInt = "<i><color=purple>Experiment can only be used if crew is scientist.</color></i>";
+                    break;
+            }
+        }
+        private static string FormatString(List<ExperimentSituations> arrIndexed, int i)
+        {
+            var enumMember = Enum.GetName(typeof (ExperimentSituations), arrIndexed[i]);
+            int j = 1;
+            while (enumMember != null && j < enumMember.Length)
+            {
+                if (!enumMember[j].ToString().Equals(enumMember[j].ToString().ToLower()))
+                {
+                    enumMember = enumMember.Insert(j, " ");
+                    j++;
+                }
+                j++;
+            }
+            if (enumMember.StartsWith("In "))
+            {
+                enumMember = enumMember.Substring(3);
+            }
+            else
+            if (enumMember.StartsWith("Srf "))
+            {
+                enumMember = enumMember.Substring(4);              
+            }
+            enumMember = string.Concat(enumMember, ": ");
+            return enumMember;
         }
 
         private string GetInfo(string[] moduleInfos, string usageMaskInt)

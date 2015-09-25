@@ -4,4 +4,7 @@
     <StartAction>Program</StartAction>
     <StartProgram>C:\KSP_104\KSP.exe</StartProgram>
   </PropertyGroup>
+  <PropertyGroup>
+    <ReferencePath>C:\KSP_104\KSP_Data\Managed\;C:\KSP_104\KSP_Data\Mono\</ReferencePath>
+  </PropertyGroup>
 </Project>
