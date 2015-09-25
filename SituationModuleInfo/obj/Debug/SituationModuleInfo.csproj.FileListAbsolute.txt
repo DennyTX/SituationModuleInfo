@@ -4,8 +4,11 @@ d:\documents\visual studio 2015\Projects\SituationModuleInfo\SituationModuleInfo
 d:\documents\visual studio 2015\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationModuleInfo.pdb
 C:\KSP_104_test\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.dll
 C:\KSP_104_test\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.pdb
-E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationMaskInfo.dll
-E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\SituationMaskInfo.pdb
 C:\KSP_104\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.dll
 C:\KSP_104\GameData\OLDD\SituationMaskInfo\SituationMaskInfo.pdb
 C:\KSP_104\GameData\OLDD\SituationMaskInfo\config.cfg
+C:\KSP_104\GameData\OLDD\ScienceSituationInfo\config.cfg
+C:\KSP_104\GameData\OLDD\ScienceSituationInfo\ScienceSituationInfo.dll
+C:\KSP_104\GameData\OLDD\ScienceSituationInfo\ScienceSituationInfo.pdb
+E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\ScienceSituationInfo.dll
+E:\DennyTX\Documents\Visual Studio 2013\Projects\SituationModuleInfo\SituationModuleInfo\obj\Debug\ScienceSituationInfo.pdb

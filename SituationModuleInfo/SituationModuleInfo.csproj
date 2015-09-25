@@ -7,8 +7,8 @@
     <ProjectGuid>{BD7DC5DD-2144-445C-9E75-E85308BBA4C5}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>SituationMaskInfo</RootNamespace>
-    <AssemblyName>SituationMaskInfo</AssemblyName>
+    <RootNamespace>ScienceSituationInfo</RootNamespace>
+    <AssemblyName>ScienceSituationInfo</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -16,7 +16,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>C:\KSP_104\GameData\OLDD\SituationMaskInfo\</OutputPath>
+    <OutputPath>C:\KSP_104\GameData\OLDD\ScienceSituationInfo\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -40,7 +40,7 @@
     </Reference>
     <Reference Include="KspHelper, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\KSP_Helper.1.0.4.3\lib\net35\KspHelper.dll</HintPath>
-      <Private>True</Private>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

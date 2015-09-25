@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using KspHelper.Behavior;
 using UnityEngine;
-using System.Reflection;
-using System.IO;
 
-namespace SituationModuleInfo
+namespace ScienceSituationInfo
 {
     class Item
     {
@@ -38,7 +38,8 @@ namespace SituationModuleInfo
 
             if (_button == null)
             {
-                var texture = GameDatabase.Instance.GetTexture("OLDD/SituationMaskInfo/ScienceInfoOFF", false);
+                var texture = GameDatabase.Instance.GetTexture("OLDD/ScienceSituationInfo/ScienceInfoOFF", false);
+                //var texture = GameDatabase.Instance.GetTexture("OLDD/ScienceSituationInfo/ScienceInfoOFF", false);
                 _button = ApplicationLauncher.Instance.AddModApplication(ButtonTrue, ButtonFalse, () => { }, () => { },
                     () => { }, () => { }, ApplicationLauncher.AppScenes.VAB | ApplicationLauncher.AppScenes.SPH, texture);
             }
@@ -47,13 +48,13 @@ namespace SituationModuleInfo
         private void ButtonTrue()
         {
             SituationMaskAnalys();
-            _button.SetTexture(GameDatabase.Instance.GetTexture("OLDD/SituationMaskInfo/ScienceInfoON", false));
+            _button.SetTexture(GameDatabase.Instance.GetTexture("OLDD/ScienceSituationInfo/ScienceInfoON", false));
         }
 
         private void ButtonFalse()
         {
             RemoveModuleAdditionalInfo();
-            _button.SetTexture(GameDatabase.Instance.GetTexture("OLDD/SituationMaskInfo/ScienceInfoOFF", false));
+            _button.SetTexture(GameDatabase.Instance.GetTexture("OLDD/ScienceSituationInfo/ScienceInfoOFF", false));
         }
 
         private void RemoveModuleAdditionalInfo()
