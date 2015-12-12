@@ -45,6 +45,13 @@ namespace ScienceSituationInfo
             }
         }
 
+		protected override void OnDestroy()
+		{
+			if (_button != null) {
+				ApplicationLauncher.Instance.RemoveModApplication (_button);
+			}
+		}
+
         private void ButtonTrue()
         {
             SituationMaskAnalys();
