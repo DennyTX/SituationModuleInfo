@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using DMagic.Part_Modules;
-using SEPScience;
-//using kerbal_impact;
 using UnityEngine;
 
 namespace ScienceSituationInfo
@@ -23,11 +20,11 @@ namespace ScienceSituationInfo
 
         protected static bool SEP_Present = false;
         protected static bool DMagic_Present = false;
+        protected static bool DMagic_Present_X = false;
         protected static bool Impact_Present = false;
         protected static bool Impact_Present_X = false;
         protected static bool ROV_Present = false;
         protected static bool ROV_Present_X = false;
-
 
         private void Start()
         {
@@ -36,30 +33,77 @@ namespace ScienceSituationInfo
             Impact_Present = AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name == "kerbal-impact");
             ROV_Present = AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name == "RoverScience");
 
-            if (ROV_Present && !ROV_Present_X)
+            RoverScience();
+
+            Impact();
+
+            if (DMagic_Present && !DMagic_Present_X)
             {
-                _partsWithScienceROV = PartLoader.LoadedPartsList.Where(p => p.name.Contains("roverBrain")).ToList();
-                foreach (var part in _partsWithScienceROV)
+                _partsWithScienceDM = PartLoader.LoadedPartsList.Where(p => p.name.Contains("dmSeismic")).ToList();
+                foreach (AvailablePart part in _partsWithScienceDM)
                 {
-                    var experimentROV = ResearchAndDevelopment.GetExperiment("RoverScienceExperiment");
-                    var itemInfo = PrepareSituationAndBiomes(experimentROV);
-                    _usageMaskInt = "<b><color=red>SURFACE ONLY, find a place</color></b>";
-                    var d = new AvailablePart.ModuleInfo
+                    ScienceExperiment experimentDMS = new ScienceExperiment();
+                    switch (part.name)
                     {
-                        moduleDisplayName = experimentROV.experimentTitle,
-                        info = GetInfo(itemInfo, _usageMaskInt)
-                    };
-                    part.moduleInfos.Add(d);
-                }
-                ROV_Present_X = true;
+                        case "dmSeismicPod":
+                            experimentDMS = ResearchAndDevelopment.GetExperiment("dmseismicHammer");
+                            _usageMaskInt = "<b><color=red>SURFACE ONLY, handled by EVA</color></b>";
+                            break;
+                        case "dmSeismicHammer":
+                            experimentDMS = ResearchAndDevelopment.GetExperiment("dmseismicHammer");
+                            _usageMaskInt = "<b><color=red>SURFACE ONLY, handled by EVA</color></b>";
+                            break;
+                    }
+
+                    List<string> itemInfo = PrepareSituationAndBiomes(experimentDMS);
+                    if (PrepareInfoDescriptionSE(part, "DMSeismic", itemInfo)) return;
+            }
+                DMagic_Present_X = true;
             }
 
+            if (SEP_Present)
+            {
+                _partsWithScienceSEP = PartLoader.LoadedPartsList.Where(p => p.name.Contains("SEP.")).ToList();
+                foreach (AvailablePart part in _partsWithScienceSEP)
+                {
+                    foreach (PartModule tmpPM in part.partPrefab.Modules)
+                    {
+                        string moduleName = tmpPM.moduleName;
+                        if (moduleName == "ModuleSEPScienceExperiment")
+                        {
+                            string SEP_ID = tmpPM.Fields.GetValue("experimentID") + "_Basic";
+                            ScienceExperiment experimentSEP = ResearchAndDevelopment.GetExperiment(SEP_ID) ?? new ScienceExperiment();
+                            List<string> itemInfo = PrepareSituationAndBiomes(experimentSEP);
+                            _usageMaskInt = "<b><color=red>SURFACE ONLY, handled by EVA</color></b>";
+                            if (PrepareInfoDescriptionSE(part, "SEPScience Experiment", itemInfo)) return;
+                        }
+                    }
+                }
+            }
+
+            _partsWithScience = PartLoader.LoadedPartsList.Where
+                (p => p.partPrefab.Modules.GetModules<ModuleScienceExperiment>().Any()).ToList();
+            foreach (AvailablePart part in _partsWithScience)
+            {
+                List<ModuleScienceExperiment> modules = part.partPrefab.Modules.GetModules<ModuleScienceExperiment>();
+                foreach (ModuleScienceExperiment moduleScienceExperiment in modules)
+                {
+                    ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment(moduleScienceExperiment.experimentID) ?? new ScienceExperiment();
+                    List<string> itemInfo = PrepareSituationAndBiomes(experiment);
+                    _usageMaskInt = SituationHelper.UsageMaskTemplates[moduleScienceExperiment.usageReqMaskInternal];
+                    PrepareInfoDescription(part, moduleScienceExperiment, itemInfo);
+                }
+            }
+        }
+
+        private void Impact()
+        {
             if (Impact_Present && !Impact_Present_X)
             {
-                _partsWithScienceIMP = PartLoader.LoadedPartsList.Where (p => p.name.Contains("Impact")).ToList();
-                foreach (var part in _partsWithScienceIMP)
+                _partsWithScienceIMP = PartLoader.LoadedPartsList.Where(p => p.name.Contains("Impact")).ToList();
+                foreach (AvailablePart part in _partsWithScienceIMP)
                 {
-                    var experimentIMP = new ScienceExperiment();
+                    ScienceExperiment experimentIMP = new ScienceExperiment();
                     switch (part.name)
                     {
                         case "Impact Seismometer":
@@ -71,81 +115,51 @@ namespace ScienceSituationInfo
                             _usageMaskInt = "<b><color=red>ORBIT ONLY, automated</color></b>";
                             break;
                     }
-                    var itemInfo = PrepareSituationAndBiomes(experimentIMP);
-                    var d = new AvailablePart.ModuleInfo
+                    List<string> itemInfo = PrepareSituationAndBiomes(experimentIMP);
+                    AvailablePart.ModuleInfo d = new AvailablePart.ModuleInfo
                     {
-                        moduleDisplayName = experimentIMP.experimentTitle, 
+                        moduleDisplayName = experimentIMP.experimentTitle,
                         info = GetInfo(itemInfo, _usageMaskInt)
                     };
                     part.moduleInfos.Add(d);
                 }
                 Impact_Present_X = true;
             }
+        }
 
-            if (SEP_Present)
+        private void RoverScience()
+        {
+            if (!ROV_Present || ROV_Present_X) return;
+            _partsWithScienceROV = PartLoader.LoadedPartsList.Where(p => p.name.Contains("roverBrain")).ToList();
+            foreach (AvailablePart part in _partsWithScienceROV)
             {
-                _partsWithScienceSEP = PartLoader.LoadedPartsList.Where
-                    (p => p.partPrefab.Modules.GetModules<ModuleSEPScienceExperiment>().Any()).ToList();
-                foreach (var part in _partsWithScienceSEP)
+                ScienceExperiment experimentROV = ResearchAndDevelopment.GetExperiment("RoverScienceExperiment");
+                List<string> itemInfo = PrepareSituationAndBiomes(experimentROV);
+                _usageMaskInt = "<b><color=red>SURFACE ONLY, find a place</color></b>";
+                AvailablePart.ModuleInfo d = new AvailablePart.ModuleInfo
                 {
-                    var modulesSEP = part.partPrefab.Modules.GetModules<ModuleSEPScienceExperiment>();
-                    foreach (var moduleScienceExperimentSEP in modulesSEP)
-                    {
-                        var SEP_ID = moduleScienceExperimentSEP.experimentID + "_Basic";
-                        ScienceExperiment experimentSEP = ResearchAndDevelopment.GetExperiment(SEP_ID) ?? new ScienceExperiment();
-                        var itemInfo = PrepareSituationAndBiomes(experimentSEP);
-                        _usageMaskInt = "<b><color=red>SURFACE ONLY, handled by EVA</color></b>";
-                        PrepareInfoDescriptionSEP(part, moduleScienceExperimentSEP, itemInfo);
-                    }
-                }
+                    moduleDisplayName = experimentROV.experimentTitle,
+                    info = GetInfo(itemInfo, _usageMaskInt)
+                };
+                part.moduleInfos.Add(d);
             }
-
-            if (DMagic_Present)
-            {
-                _partsWithScienceDM = PartLoader.LoadedPartsList.Where
-                    (p => p.partPrefab.Modules.GetModules<DMBasicScienceModule>().Any()).ToList();
-                foreach (var part in _partsWithScienceDM)
-                {
-                    var modulesDM = part.partPrefab.Modules.GetModules<DMBasicScienceModule>();
-                    foreach (var moduleScienceExperimentDM in modulesDM)
-                    {
-                        ScienceExperiment experimentDM = ResearchAndDevelopment.GetExperiment(moduleScienceExperimentDM.experimentID) ?? new ScienceExperiment();
-                        var itemInfo = PrepareSituationAndBiomes(experimentDM);
-                        _usageMaskInt = "<b><color=red>SURFACE ONLY, handled by EVA</color></b>";
-                        PrepareInfoDescriptionDM(part, moduleScienceExperimentDM, itemInfo);
-                    }
-                }
-            }
-
-            _partsWithScience = PartLoader.LoadedPartsList.Where
-                (p => p.partPrefab.Modules.GetModules<ModuleScienceExperiment>().Any()).ToList();
-            foreach (var part in _partsWithScience)
-            {
-                var modules = part.partPrefab.Modules.GetModules<ModuleScienceExperiment>();
-                foreach (var moduleScienceExperiment in modules)
-                {
-                    ScienceExperiment experiment = ResearchAndDevelopment.GetExperiment(moduleScienceExperiment.experimentID) ?? new ScienceExperiment();
-                    var itemInfo = PrepareSituationAndBiomes(experiment);
-                    _usageMaskInt = SituationHelper.UsageMaskTemplates[moduleScienceExperiment.usageReqMaskInternal];
-                    PrepareInfoDescription(part, moduleScienceExperiment, itemInfo);
-                }
-            }
+            ROV_Present_X = true;
         }
 
         private List<string> PrepareSituationAndBiomes(ScienceExperiment experiment)
         {
-            var result = new List<string>();
+            List<string> result = new List<string>();
 
-            foreach (var situationTemplate in SituationHelper.SituationTemplates)
+            foreach (KeyValuePair<ExperimentSituations, Func<bool, string>> situationTemplate in SituationHelper.SituationTemplates)
             {
                 uint situationMask = experiment.situationMask;
                 if (ROV_Present && experiment.situationMask==64)
                 {
                     situationMask = 1;
                 }
-                var flag = (situationMask & (uint)situationTemplate.Key) == (uint)situationTemplate.Key; //получаем чтото если текущая ситуация совпадает с заявленной
-                var dictValue = situationTemplate.Value; // получили делегат
-                var preparedInfo = dictValue(flag); // вызвали делегат
+                bool flag = (situationMask & (uint)situationTemplate.Key) == (uint)situationTemplate.Key; //получаем чтото если текущая ситуация совпадает с заявленной
+                Func<bool, string> dictValue = situationTemplate.Value; // получили делегат
+                string preparedInfo = dictValue(flag); // вызвали делегат
                 if (flag && (experiment.biomeMask & (uint)situationTemplate.Key) == (uint)situationTemplate.Key)
                 {
                     preparedInfo += _biomeDepending;
@@ -159,9 +173,9 @@ namespace ScienceSituationInfo
         {
             try
             {
-                var infos = part.moduleInfos;
+                List<AvailablePart.ModuleInfo> infos = part.moduleInfos;
                 AvailablePart.ModuleInfo d = null;
-                foreach (var x in infos)
+                foreach (AvailablePart.ModuleInfo x in infos)
                 {
                     if (!x.info.Contains(moduleScienceExperiment.experimentActionName)) continue;
                     d = x;
@@ -176,47 +190,26 @@ namespace ScienceSituationInfo
             }
         }
 
-        private void PrepareInfoDescriptionSEP(AvailablePart part, ModuleSEPScienceExperiment moduleScienceExperiment, List<string> itemInfo)
+        private bool PrepareInfoDescriptionSE(AvailablePart part, string ExperimentDisplayName, List<string> itemInfo)
         {
             try
             {
-                var infos = part.moduleInfos;
+                List<AvailablePart.ModuleInfo> infos = part.moduleInfos;
                 AvailablePart.ModuleInfo d = null;
-                foreach (var x in infos)
+                foreach (AvailablePart.ModuleInfo i in infos)
                 {
-                    if (!x.info.Contains(moduleScienceExperiment.experimentActionName)) continue;
-                    d = x;
+                    if (!i.moduleDisplayName.Contains(ExperimentDisplayName)) continue;
+                    d = i;
                     break;
                 }
-                if (d == null) return;
+                if (d == null) return true;
                 d.info = string.Concat(d.info, "\n", GetInfo(itemInfo, _usageMaskInt));
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                Debug.Log("DennyTX: " + ex);
             }
-        }
-
-        private void PrepareInfoDescriptionDM(AvailablePart part, DMBasicScienceModule moduleScienceExperiment, List<string> itemInfo)
-        {
-            try
-            {
-                var infos = part.moduleInfos;
-                AvailablePart.ModuleInfo d = null;
-                foreach (var x in infos)
-                {
-                    if (!x.moduleDisplayName.Contains(moduleScienceExperiment.GUIName)) continue;
-                    //if (!x.info.Contains(moduleScienceExperiment.experimentActionName)) continue;
-                    d = x;
-                    break;
-                }
-                if (d == null) return;
-                d.info = string.Concat(d.info, "\n", GetInfo(itemInfo, _usageMaskInt));
-            }
-            catch (Exception ex)
-            {
-                Debug.LogException(ex);
-            }
+            return false;
         }
 
         private string GetInfo(List<string> moduleInfos, string usageMaskInt)
@@ -232,12 +225,12 @@ namespace ScienceSituationInfo
 
         private void OnDestroy()
         {
-            foreach (var part in _partsWithScience)
+            foreach (AvailablePart part in _partsWithScience)
             {
-                var moduleInfos = part.partPrefab.partInfo.moduleInfos;
-                foreach (var moduleInfo in moduleInfos)
+                List<AvailablePart.ModuleInfo> moduleInfos = part.partPrefab.partInfo.moduleInfos;
+                foreach (AvailablePart.ModuleInfo moduleInfo in moduleInfos)
                 {
-                    var startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
+                    int startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
                     if (startIndex < 0) continue;
                     moduleInfo.info = moduleInfo.info.Remove(startIndex - 1);
                 }
@@ -245,43 +238,17 @@ namespace ScienceSituationInfo
 
             if (SEP_Present)
             {
-                foreach (var part in _partsWithScienceSEP)
+                foreach (AvailablePart part in _partsWithScienceSEP)
                 {
-                    var moduleInfos = part.partPrefab.partInfo.moduleInfos;
-                    foreach (var moduleInfo in moduleInfos)
+                    List<AvailablePart.ModuleInfo> moduleInfos = part.partPrefab.partInfo.moduleInfos;
+                    foreach (AvailablePart.ModuleInfo moduleInfo in moduleInfos)
                     {
-                        var startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
+                        int startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
                         if (startIndex < 0) continue;
                         moduleInfo.info = moduleInfo.info.Remove(startIndex - 1);
                     }
                 }
             }
-            if (DMagic_Present)
-            {
-                foreach (var part in _partsWithScienceDM)
-                {
-                    var moduleInfos = part.partPrefab.partInfo.moduleInfos;
-                    foreach (var moduleInfo in moduleInfos)
-                    {
-                        var startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
-                        if (startIndex < 0) continue;
-                        moduleInfo.info = moduleInfo.info.Remove(startIndex - 1);
-                    }
-                }
-            }
-            //if (Impact_Present)
-            //{
-            //    foreach (var part in _partsWithScienceIMP)
-            //    {
-            //        var moduleInfos = part.moduleInfos;
-            //        foreach (var moduleInfo in moduleInfos)
-            //        {
-            //            var startIndex = moduleInfo.info.IndexOf("--------------------------------", StringComparison.Ordinal);
-            //            if (startIndex < 0) continue;
-            //            moduleInfo.info = moduleInfo.info.Remove(startIndex - 1);
-            //        }
-            //    }
-            //}
         }
     }
 }

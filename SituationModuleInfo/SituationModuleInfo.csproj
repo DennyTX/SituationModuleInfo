@@ -24,22 +24,15 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>D:\KSP_131_test\GameData\OLDD\SituationModuleInfo\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <GenerateSerializationAssemblies>Auto</GenerateSerializationAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
       <HintPath>D:\KSP_131_test\KSP_x64_Data\Managed\Assembly-CSharp.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="DMagic">
-      <HintPath>D:\KSP_131_test\GameData\DMagicOrbitalScience\Plugins\DMagic.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="SEPScience">
-      <HintPath>D:\KSP_131_test\GameData\SurfaceExperimentPackage\Plugins\SEPScience.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="System" />
